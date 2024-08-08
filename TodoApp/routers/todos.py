@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from starlette import status
-from models import Todos
-from database import SessionLocal
+from ..models import Todos
+from ..database import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated, Optional
 from pydantic import BaseModel, Field
 from .auth import get_current_user
+
+# FRONTEND
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+
+templates = Jinja2Templates(directory="TodoApp/templates")
 
 router = APIRouter(tags=["Todo"])
 
@@ -42,6 +49,12 @@ class TodoRequest(BaseModel):
             }
         }
     }
+    
+    
+@router.get("/test")
+async def test(request: Request):
+    
+    return templates.TemplateResponse("home.html", {"request": request})
 
         
 @router.get("/", status_code=status.HTTP_200_OK)

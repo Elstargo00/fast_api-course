@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from models import Users
+from ..models import Users
 from passlib.context import CryptContext
-from database import SessionLocal
+from ..database import SessionLocal
 from typing import Annotated
 from sqlalchemy.orm import Session
 from starlette import status
@@ -44,17 +44,14 @@ def authenticate_user(username: str, password: str, db):
     user = db.query(Users).filter(Users.username == username).first()
     
     if not user:
-        raise HTTPException(
-            status_code = 404,
-            detail = "User not found."
-        )
+        return False
         
     if not bcrypt_context.verify(password, user.hashed_password):
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = "Could not validate user."
         )
-    
+        
     return user
 
 
@@ -104,6 +101,7 @@ class CreateUserRequest(BaseModel):
     last_name: str
     password: str
     role: str
+    phone_number: str
 
 class Token(BaseModel):
     access_token: str
@@ -136,6 +134,12 @@ async def login_for_access_token(
     ):
     
     user = authenticate_user(form_data.username, form_data.password, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code = 404,
+            detail = "User not found."
+        )
     
 
     token = create_access_token(user.username, user.id, user.role, timedelta(minutes=20))

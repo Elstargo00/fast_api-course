@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
 from starlette import status
-from models import Todos, Users
-from database import SessionLocal
+from ..models import Users
+from ..database import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated, Optional
 from pydantic import BaseModel, Field
 from .auth import get_current_user
-# from passlib.context import CryptContext
 from .auth import bcrypt_context
 
 router = APIRouter(
@@ -41,22 +40,25 @@ class ChangePasswordRequest(BaseModel):
     
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def get_user(user: user_dependency):
+async def get_user(db: db_dependency, user: user_dependency):
     
     if not user:
         raise HTTPException(
             status_code = status.HTTP_403_FORBIDDEN,
             detail = "You're not allowed"
         )
+        
+    user_item = db.query(Users).filter(Users.id==user["id"]).first()
                
-    return user
+    return user_item
 
 
 @router.put("/change_password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     user: user_dependency,
     db: db_dependency,
-    form_data: Annotated[ChangePasswordRequest, Depends()],
+    # form_data: Annotated[ChangePasswordRequest, Depends()],
+    form_data: ChangePasswordRequest
 ):
     
     if not user:
@@ -70,7 +72,7 @@ async def change_password(
     if not bcrypt_context.verify(form_data.old_password, user_item.hashed_password):
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = "Error on password change"
+            detail = "Error on password change."
         )
         
     if form_data.new_password == form_data.new_password_confirm:
@@ -81,3 +83,23 @@ async def change_password(
     db.commit()
     
     
+@router.put("/update_phone_number/{updating_phone_number}", status_code=status.HTTP_204_NO_CONTENT)
+def update_phone_number(
+    user: user_dependency,
+    db: db_dependency,
+    updating_phone_number
+):
+    
+    if not user:
+        raise HTTPException( 
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = "You're not allowed"
+        )
+        
+    user_item = db.query(Users).filter(Users.id==user.get("id")).first()
+    user_item.phone_number = updating_phone_number
+    
+    db.add(user_item)
+    db.commit()
+    
+    return {"message": "Your phone number has been updated successfully."}
